@@ -90,27 +90,20 @@ function addBashToQueue(event) {
 
 // 处理事件函数
 function handleBash(event) {
-
     if (CROOMID.includes(Number(event.roomid))) {
         // 标记 FFmpeg 进程正在运行
         isFFmpegRunning = true;
     }
-
-    const eventid = event.eventid;
-    const filepath = event.filepath;
     const roomid = event.roomid;
-    const name = event.name;
-    const title = event.title;
-    const timeid = dayjs(event.fileopentime).tz('Asia/Shanghai').format('YYYYMMDD_HHmmssSSS')
+    const partialPath = dayjs(event.fileopentime).tz('Asia/Shanghai').format('YYYY_MM');
+    event["filepath"] = event.filepath.slice(0, -4);
+    event["timeid"] = dayjs(event.fileopentime).tz('Asia/Shanghai').format('YYYYMMDD_HHmmssSSS');
+    event["afterRclone"] = `${RCLONEDIR}${roomid}-${event.name}/${partialPath}/${event.timeid}`;
+    event["afterdir"] = `${BILIFILE}/${roomid}-${event.name}/${event.timeid}`;
 
-    console.log(WROOMID.includes(Number(roomid)) ? 'runSpawn: Whitelist' : (BROOMID.includes(Number(roomid)) ? 'runSpawn: Blacklist' : (CROOMID.includes(Number(roomid)) ? 'runSpawn: Code' : 'runSpawn: Other')))
+    runSpawn(event).then(() => {
 
-    runSpawn(roomid, name, title, timeid, filepath.slice(0, -4), eventid).then(() => {
-
-        const afterRclone = `${RCLONEDIR}${roomid}-${name}/${timeid}`;
-        const afterdir = `${BILIFILE}/${roomid}-${name}/${timeid}`;
-
-        const ls = spawn('rclone', ['ls', `${afterRclone}/`, '--exclude', '*.txt'], { stdio: ['ignore', 'pipe', 'pipe'] });
+        const ls = spawn('rclone', ['ls', `${event.afterRclone}/`, '--exclude', '*.txt'], { stdio: ['ignore', 'pipe', 'pipe'] });
         const wc = spawn('wc', ['-l'], { stdio: ['pipe', 'pipe', 'ignore'] });
         ls.stdout.pipe(wc.stdin);
 
@@ -122,15 +115,15 @@ function handleBash(event) {
             let a = WROOMID.includes(Number(roomid)) ? 5 : (BROOMID.includes(Number(roomid)) ? 2 : 3)
                 //console.log(`a=${a}`)
             if (a === Number(stdout)) {
-                tgnotice(`🎊 <b>${name}</b> <code>>></code> 上传成功！`, '');
-                spawn('rm', ['-rf', `${afterdir}`]).on('close', code => console.log(`[    rm-exit  ] (${eventid}): ${code}`))
+                tgnotice(`🎊 <b>${event.name}</b> <code>>></code> 上传成功！`, '');
+                spawn('rm', ['-rf', `${event.afterdir}`]).on('close', code => console.log(`[    rm-exit  ] (${event.eventid}): ${code}`))
             } else {
-                tgnotice(`🚧 <b>${name}</b> <code>>></code> <b><i><u>上传失败！</u></i></b>`, '');
+                tgnotice(`🚧 <b>${event.name}</b> <code>>></code> <b><i><u>上传失败！</u></i></b>`, '');
             };
         });
 
         wc.on('close', code => {
-            console.log(`[    wc-exit  ] (${eventid}): ${code}`)
+            console.log(`[    wc-exit  ] (${event.eventid}): ${code}`)
             if (CROOMID.includes(Number(event.roomid))) {
                 if (queue.length > 0) {
                     console.log("处理下一事件")
