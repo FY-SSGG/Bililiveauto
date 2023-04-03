@@ -55,15 +55,15 @@ app.post('/', function(req, res) {
             break;
         case "StreamStarted":
             var banner = `<tg-spoiler>~—~—~—</tg-spoiler><b>LIVE-MESSAGE</b><tg-spoiler>—~—~—~</tg-spoiler>\n🟡 <b>${req.body.EventData.Name}</b> <code>>></code> 直播开始！`;
-            tgnotice(banner, text);
+            tgnotice(banner, text, null);
             break;
         case "SessionStarted":
             var banner = `🟢 <b>${req.body.EventData.Name}</b> <code>>></code> 开始录制！`;
-            tgnotice(banner, '');
+            tgnotice(banner, '', 14400);
             break;
         case "StreamEnded":
             var banner = `🔴 <b>${req.body.EventData.Name}</b> <code>>></code> 直播结束！`;
-            tgnotice(banner, '');
+            tgnotice(banner, '', 14400);
             break;
         default:
             console.log("Webhook: 判断类型: " + req.body.EventType + " => 提醒未发送");
@@ -115,10 +115,10 @@ function handleBash(event) {
             let a = WROOMID.includes(Number(roomid)) ? 5 : (BROOMID.includes(Number(roomid)) ? 2 : 3)
                 //console.log(`a=${a}`)
             if (a === Number(stdout)) {
-                tgnotice(`🎊 <b>${event.name}</b> <code>>></code> 上传成功！`, '');
+                tgnotice(`🎊 <b>${event.name}</b> <code>>></code> 上传成功！`, '', null);
                 spawn('rm', ['-rf', `${event.afterdir}`]).on('close', code => console.log(`[    rm-exit  ] (${event.eventid}): ${code}`))
             } else {
-                tgnotice(`🚧 <b>${event.name}</b> <code>>></code> <b><i><u>上传失败！</u></i></b>`, '');
+                tgnotice(`🚧 <b>${event.name}</b> <code>>></code> <b><i><u>上传失败！</u></i></b>`, '', null);
             };
         });
 

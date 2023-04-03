@@ -10,7 +10,7 @@ const bot = new TelegramBot(TG_TOKEN, {
   polling: false
 })
 
-function tgnotice(banner, text) {
+function tgnotice(banner, text, timeout) {
 
   const chatIds = CHAT_IDS.split(',');
 
@@ -18,7 +18,7 @@ function tgnotice(banner, text) {
     bot.sendMessage(chatId, `${banner}\n${text}`, { parse_mode: "HTML", disable_web_page_preview: true })
       .then(message => {
         console.log(`Message sent: ${message.text}\n`);
-        deleteMessage(message, TG_TIMEOUTDELETE);
+        deleteMessage(message, timeout ?? TG_TIMEOUTDELETE);
       })
       .catch((error) => {
         console.error('TG_Error:', error);
