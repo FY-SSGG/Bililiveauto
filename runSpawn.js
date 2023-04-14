@@ -1,6 +1,7 @@
 const dotenv = require("dotenv");
 dotenv.config();
 const { spawn } = require("child_process");
+const fs = require('fs')
 
 const BILIFILE = process.env.BILIFILE;
 const DANMUFC = process.env.DANMUFC;
@@ -18,7 +19,7 @@ function runSpawn(event) {
   const afterRclone = event.afterRclone;
   const afterdir = event.afterdir;
   const type = WROOMID.includes(Number(roomid)) ? "Whitelist" : BROOMID.includes(Number(roomid)) ? "Blacklist" : CROOMID.includes(Number(roomid)) ? "Code" : "Other";
-  console.log(`[runSpawn     ] (${event.name}): ${type}`);
+  console.log(`[   runSpawn  ] (${event.name}): ${type}`);
 
   return new Promise((resolve, reject) => {
     CreateFiles()
@@ -97,18 +98,46 @@ function runSpawn(event) {
   function FFmpeg() {
     return new Promise((resolve, reject) => {
       let finishedProcessesCount = 0;
+
       //弹幕处理有BUG,xml没有弹幕的时候会卡住，无法结束进程
       const danmucl = spawn(DANMUFC, ["-o", "ass", `${afterdir}/${text}.ass`, "-i", "xml", `${afterdir}/${text}.xml`, "--ignore-warnings"]);
       const FFmpeg = spawn("ffmpeg", ["-v", "24", "-i", `${afterdir}/${text}.flv`, "-vn", "-acodec", "copy", `${afterdir}/${text}.m4a`]);
       danmucl.stderr.on("data", (data) => console.log(`[ danmu-stderr] (${EventId}): ${data}`));
       FFmpeg.stderr.on("data", (data) => console.log(`[FFmpeg-stderr] (${EventId}): ${data}`));
 
+      let nfoContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<movie>
+    <title>${escapeXml(event.title)}</title>
+    <plot>/</plot>
+    <year>${event.fileopentime.slice(0, 4)}</year>
+    <mpaa>PG</mpaa>
+    <genre>Live</genre>
+    <genre>zh</genre>
+    <director>${escapeXml(event.name)}</director>
+    <writer>${escapeXml(event.name)}</writer>
+    <actor>
+        <name>${escapeXml(event.name)}</name>
+        <type>Actor</type>
+        <thumb>/</thumb>
+    </actor>
+    <cover>/</cover>
+    <website>https://live.bilibili.com/${event.roomid}</website>
+</movie>`;
+
       const handleProcessClose = () => {
         finishedProcessesCount++;
         if (finishedProcessesCount === 2) {
           console.log(`[FFmpeg-exit  ] (${EventId}): ${finishedProcessesCount === 2 ? 0 : 1}`);
-          resolve();
-        }
+          fs.writeFile(`${afterdir}/${text}.nfo`, nfoContent, (err) => {
+            if (err) {
+              console.log(`[   Nfo-exit  ] (${EventId}): 1`);
+              reject(err);
+            }else {
+              console.log(`[   Nfo-exit  ] (${EventId}): 0`);
+              resolve();
+            }
+          });
+        } 
       };
 
       /* danmucl.on('close',code=> console.log(`[danmucl-exit ] (${EventId}): ${code}`))
@@ -118,7 +147,7 @@ function runSpawn(event) {
       }) */
 
       danmucl.on("close", handleProcessClose);
-      FFmpeg.on("close", handleProcessClose);
+      FFmpeg.on("close",  handleProcessClose);
       danmucl.on("error", reject);
       FFmpeg.on("error", (error) => {
         console.log(`[FFmpeg-error ] (${EventId}): ${error}`);
@@ -165,7 +194,7 @@ function runSpawn(event) {
               ffmpeg.on("close", (code) => {
                 console.log(`[ffmpeg-exit  ] (${EventId}): ${code}`);
 
-                const rclone = spawn("rclone", ["copy", `${afterdir}/`, `${afterRclone}/`, "--include", "*.mp4", "--include", "*.m4a", "--include", "*.ass", "-q"]);
+                const rclone = spawn("rclone", ["copy", `${afterdir}/`, `${afterRclone}/`, "--min-size", "1b", "--exclude", "*.flv", "--exclude", "*.xml", "--exclude", "*.m4a", "-q"]);
                 rclone.stdout.on("data", (data) => console.log(`[rclone-stdout] (${EventId}): ${data}`));
                 rclone.stderr.on("data", (data) => console.log(`[rclone-stderr] (${EventId}): ${data}`));
                 rclone.on("close", (code) => {
@@ -184,7 +213,7 @@ function runSpawn(event) {
               });
               break;
             default:
-              const rclone = spawn("rclone", ["copy", `${afterdir}/`, `${afterRclone}/`, "--include", "*.flv", "--include", "*.m4a", "--include", "*.ass", "-q"]);
+              const rclone = spawn("rclone", ["copy", `${afterdir}/`, `${afterRclone}/`, "--min-size", "1b", "--exclude", "*.xml", "--exclude", "*.m4a", "-q"]);
               rclone.stdout.on("data", (data) => console.log(`[rclone-stdout] (${EventId}): ${data}`));
               rclone.stderr.on("data", (data) => console.log(`[rclone-stderr] (${EventId}): ${data}`));
               rclone.on("close", (code) => {
@@ -199,6 +228,25 @@ function runSpawn(event) {
           }
     });
   }
+}
+
+//xml格式化函数
+function escapeXml(unsafe) {
+
+  return unsafe.replace(/[<>&'"]/g, function(c) {
+      switch (c) {
+          case '<':
+              return '&lt;';
+          case '>':
+              return '&gt;';
+          case '&':
+              return '&amp;';
+          case '\'':
+              return '&apos;';
+          case '"':
+              return '&quot;';
+      }
+  });
 }
 
 module.exports = runSpawn;

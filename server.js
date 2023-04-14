@@ -112,7 +112,7 @@ function handleBash(event) {
             const stdout = data.toString().trim();
             //console.log(Number(stdout));
 
-            let a = WROOMID.includes(Number(roomid)) ? 5 : (BROOMID.includes(Number(roomid)) ? 2 : 3)
+            let a = WROOMID.includes(Number(roomid)) ? 6 : (BROOMID.includes(Number(roomid)) ? 2 : 4)
                 //console.log(`a=${a}`)
             if (a === Number(stdout)) {
                 tgnotice(`🎊 <b>${event.name}</b> <code>>></code> 上传成功！`, '', null);
@@ -138,3 +138,4 @@ function handleBash(event) {
         })
     })
 }
+
