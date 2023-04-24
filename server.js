@@ -43,15 +43,17 @@ app.post('/', function(req, res) {
     //判断直播事件：开播、下播、录制、文件关闭等
     switch (req.body.EventType) {
         case "FileClosed":
-            const event = {
-                eventid: req.body.EventId,
-                filepath: req.body.EventData.RelativePath,
-                roomid: req.body.EventData.RoomId,
-                name: req.body.EventData.Name,
-                title: req.body.EventData.Title,
-                fileopentime: req.body.EventData.FileOpenTime,
-            }
-            runbash(event);
+            setTimeout(() => {
+                const event = {
+                    eventid: req.body.EventId,
+                    filepath: req.body.EventData.RelativePath,
+                    roomid: req.body.EventData.RoomId,
+                    name: req.body.EventData.Name,
+                    title: req.body.EventData.Title,
+                    fileopentime: req.body.EventData.FileOpenTime,
+                }
+                runbash(event);
+            }, Math.random() * 5000);
             break;
         case "StreamStarted":
             var banner = `<tg-spoiler>~—~—~—</tg-spoiler><b>LIVE-MESSAGE</b><tg-spoiler>—~—~—~</tg-spoiler>\n🟡 <b>${req.body.EventData.Name}</b> <code>>></code> 直播开始！`;

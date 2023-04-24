@@ -14,7 +14,7 @@ const CROOMID = process.env.CROOMID.split(",").map(Number);
 function runSpawn(event) {
   const roomid = event.roomid;
   const EventId = event.eventid;
-  const text = `${event.timeid}_${event.title}`;
+  const text = `${event.timeid}_${sanitizeFilename(event.title)}`;
   const beforePath = `${BILIFILE}/${event.filepath}`;
   const afterRclone = event.afterRclone;
   const afterdir = event.afterdir;
@@ -247,6 +247,11 @@ function escapeXml(unsafe) {
               return '&quot;';
       }
   });
+}
+
+//路径格式化
+function sanitizeFilename(filename) {
+  return filename.replace(/[/\\?%*:|"<>]/g, '_');
 }
 
 module.exports = runSpawn;
