@@ -213,7 +213,7 @@ function runSpawn(event) {
               });
               break;
             default:
-              const rclone = spawn("rclone", ["copy", `${afterdir}/`, `${afterRclone}/`, "--min-size", "1b", "--exclude", "*.xml", "--exclude", "*.m4a", "-q"]);
+              const rclone = spawn("rclone", ["copy", `${afterdir}/`, `${afterRclone}/`, "--min-size", "1b", "--exclude", "*.xml", "-q"]);
               rclone.stdout.on("data", (data) => console.log(`[rclone-stdout] (${EventId}): ${data}`));
               rclone.stderr.on("data", (data) => console.log(`[rclone-stderr] (${EventId}): ${data}`));
               rclone.on("close", (code) => {
