@@ -121,6 +121,9 @@ function handleBash(event) {
                 spawn('rm', ['-rf', `${event.afterdir}`]).on('close', code => console.log(`[    rm-exit  ] (${event.eventid}): ${code}`))
             } else {
                 tgnotice(`🚧 <b>${event.name}</b> <code>>></code> <b><i><u>上传失败！</u></i></b>`, '', null);
+                if (!WROOMID.includes(Number(roomid))) {
+                    spawn('rm', ['-rf', `${event.afterdir}`]).on('close', code => console.log(`[    rm-exit  ] (${event.eventid}): ${code}`))
+                }
             };
         });
 
