@@ -7,15 +7,29 @@ const { spawn } = require('child_process');
 const dayjs = require('dayjs');
 const utc = require('dayjs/plugin/utc');
 const timezone = require('dayjs/plugin/timezone');
+const fs = require('fs');
+const { promisify } = require('util');
 dayjs.extend(utc).extend(timezone);
 
 const PORT = process.env.PORT;
 const BILIFILE = process.env.BILIFILE;
 const RCLONEDIR = process.env.RCLONEDIR;
 
-const WROOMID = process.env.WROOMID.split(',').map(Number);
-const BROOMID = process.env.BROOMID.split(',').map(Number);
-const CROOMID = process.env.CROOMID.split(',').map(Number);
+const readFileAsync = promisify(fs.readFile);
+const configLog = process.env.WORKDIR + '/config.json';
+
+let WROOMID;
+let BROOMID;
+let CROOMID;
+
+try {
+    if (!fs.existsSync(configLog)) {
+      // 判断配置文件是否存在，不存在即创建
+      fs.writeFileSync(configLog, JSON.stringify({ WROOMID: [] , BROOMID: [] , CROOMID: [] }, null, 2));
+    }
+  } catch (err) {
+    console.error(err);
+  }
 
 // 队列，用于存储事件
 const queue = [];
@@ -34,11 +48,21 @@ var server = app.listen(PORT, function() {
 app.use(express.json({ extended: false }));
 
 //  POST 请求
-app.post('/', function(req, res) {
+app.post('/', async function(req, res) {
     //读取body中的数据
+    try{
+        const biliConfigData = await getBilConfigData();
+        const biliConfigJson = JSON.parse(biliConfigData);
+        WROOMID = biliConfigJson.WROOMID || [];
+        BROOMID = biliConfigJson.BROOMID || [];
+        CROOMID = biliConfigJson.CROOMID || [];
+      } catch(err){
+        console.error(err);
+      }
+      
     res.sendStatus(200);
     console.log("Webhook: 录播姬 POST 到达 事件：" + req.body.EventType);
-    let type = WROOMID.includes(Number(req.body.EventData.RoomId)) ? 'W' : (BROOMID.includes(Number(req.body.EventData.RoomId)) ? 'B' : (CROOMID.includes(Number(req.body.EventData.RoomId)) ? 'C' : 'O'));
+    let type = WROOMID.includes(Number(req.body.EventData.RoomId)) ? 'W' : (BROOMID.includes(Number(req.body.EventData.RoomId)) ? 'B' : (CROOMID.includes(Number(req.body.EventData.RoomId)) ? 'C' : 'D'));
     let text = `分区 <code>:</code> ${req.body.EventData.AreaNameParent} ${req.body.EventData.AreaNameChild} <b>${type}</b>\n标题 <code>:</code> <i><a href="https://live.bilibili.com/${req.body.EventData.RoomId}">${req.body.EventData.Title}</a></i>`;
     //判断直播事件：开播、下播、录制、文件关闭等
     switch (req.body.EventType) {
@@ -51,6 +75,7 @@ app.post('/', function(req, res) {
                     name: req.body.EventData.Name,
                     title: req.body.EventData.Title,
                     fileopentime: req.body.EventData.FileOpenTime,
+                    type: type,
                 }
                 runbash(event);
             }, Math.random() * 5000);
@@ -114,7 +139,7 @@ function handleBash(event) {
             const stdout = data.toString().trim();
             //console.log(Number(stdout));
 
-            let a = WROOMID.includes(Number(roomid)) ? 6 : (BROOMID.includes(Number(roomid)) ? 2 : 5)
+            let a = WROOMID.includes(Number(roomid)) ? 6 : (BROOMID.includes(Number(roomid)) ? 3 : 5)
                 //console.log(`a=${a}`)
             if (a === Number(stdout)) {
                 tgnotice(`🎊 <b>${event.name}</b> <code>>></code> 上传成功！`, '', null);
@@ -144,3 +169,6 @@ function handleBash(event) {
     })
 }
 
+async function getBilConfigData() {
+    return readFileAsync(configLog, "utf-8");
+}
